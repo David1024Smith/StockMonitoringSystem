@@ -1,0 +1,16 @@
+[Desktop Entry]
+Categories=StockMonitoringSystem;
+Comment=StockMonitoringSystem
+Comment[zh_CN]=股票监控系统
+Encoding=UTF-8
+Exec=/opt/durapps/stockmonitoringsystem/StockMonitoringSystem
+GenericName=StockMonitoringSystem
+GenericName[zh_CN]=股票监控系统
+Icon=/opt/durapps/stockmonitoringsystem/stock.png
+Name=StockMonitoringSystem
+Name[zh_CN]=股票监控系统
+StartupNotify=false
+Terminal=false
+Type=Application
+Version=1.0.0.0
+X-Deepin-Vendor=user-custom

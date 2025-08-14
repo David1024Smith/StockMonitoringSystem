@@ -2,11 +2,13 @@
 #define UPDATEMYGPDIALOG_H
 
 #include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include "data.h"
 class StockCanvas;
-namespace Ui {
-class updateMyGpDialog;
-}
 
 class updateMyGpDialog : public QDialog
 {
@@ -29,7 +31,30 @@ private slots:
 
 
 private:
-    Ui::updateMyGpDialog *ui;
+    void setupUi();
+    
+    // UI elements
+    QVBoxLayout *verticalLayout;
+    QVBoxLayout *stockView;
+    QHBoxLayout *horizontalLayout_5;
+    QLabel *label;
+    QLabel *codecLabel;
+    QHBoxLayout *horizontalLayout_4;
+    QLabel *label_2;
+    QLabel *nameLabel;
+    QHBoxLayout *horizontalLayout_2;
+    QLabel *label_3;
+    QLineEdit *totalEdit;
+    QHBoxLayout *horizontalLayout_6;
+    QLabel *label_5;
+    QLineEdit *eveEdit;
+    QHBoxLayout *horizontalLayout_3;
+    QLabel *label_4;
+    QLineEdit *numEdit;
+    QHBoxLayout *horizontalLayout;
+    QPushButton *okBtn;
+    QPushButton *cancelBtn;
+    
     DataHaveGP m_map;
     StockCanvas *m_stockWidget{nullptr};
 };

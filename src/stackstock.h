@@ -2,11 +2,11 @@
 #define STACKSTOCK_H
 
 #include <QWidget>
+#include <QGridLayout>
+#include <QVBoxLayout>
+#include <QTabWidget>
 class StockCanvas;
 class StockKlineViewData;
-namespace Ui {
-class stackStock;
-}
 
 class stackStock : public QWidget
 {
@@ -18,7 +18,23 @@ public:
     void setData(QString code);
 
 private:
-    Ui::stackStock *ui;
+    void setupUi();
+    
+    // UI elements
+    QGridLayout *gridLayout;
+    QTabWidget *tabWidget;
+    QWidget *day;
+    QGridLayout *gridLayout_2;
+    QVBoxLayout *vday;
+    QWidget *tab;
+    QGridLayout *gridLayout_5;
+    QVBoxLayout *dayK;
+    QWidget *week;
+    QGridLayout *gridLayout_3;
+    QVBoxLayout *weekK;
+    QWidget *month;
+    QGridLayout *gridLayout_4;
+    QVBoxLayout *monthK;
 
     StockCanvas *m_Stock{nullptr};
 

@@ -1,19 +1,16 @@
 #include "stackstock.h"
-#include "ui_stackstock.h"
 #include "stockView/stockcanvas.h"
 #include "stockKlineView/stockklineviewdata.h"
 #include "application.h"
 
 stackStock::stackStock(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::stackStock)
+    QWidget(parent)
 {
-    ui->setupUi(this);
+    setupUi();
 }
 
 stackStock::~stackStock()
 {
-    delete ui;
 }
 
 void stackStock::setData(QString code)
@@ -73,11 +70,11 @@ void stackStock::setData(QString code)
         m_KlineMonth->setWindowTitle(codec);
 //        m_KlineYear->show();
     }
-    ui->vday->addWidget(m_Stock);
+    vday->addWidget(m_Stock);
 
-    ui->dayK->addWidget(m_KlineDay);
-    ui->weekK->addWidget(m_KlineWeek);
-    ui->monthK->addWidget(m_KlineMonth);
+    dayK->addWidget(m_KlineDay);
+    weekK->addWidget(m_KlineWeek);
+    monthK->addWidget(m_KlineMonth);
 
     this->show();
     this->setWindowTitle(m_codec);
@@ -85,4 +82,89 @@ void stackStock::setData(QString code)
 //    m_Stock->setIDandTime("0000001");
 //    m_Stock->setMinimumHeight(300);
 //    m_Stock->setStatus(ViewStatus::NOLINETIP);
+}
+
+void stackStock::setupUi()
+{
+    if (objectName().isEmpty())
+        setObjectName(QString::fromUtf8("stackStock"));
+    resize(429, 300);
+    setWindowTitle("Form");
+    
+    gridLayout = new QGridLayout(this);
+    gridLayout->setObjectName(QString::fromUtf8("gridLayout"));
+    gridLayout->setContentsMargins(0, 0, 0, 0);
+    gridLayout->setSpacing(0);
+    
+    tabWidget = new QTabWidget(this);
+    tabWidget->setObjectName(QString::fromUtf8("tabWidget"));
+    tabWidget->setCurrentIndex(0);
+    
+    // Day tab
+    day = new QWidget();
+    day->setObjectName(QString::fromUtf8("day"));
+    
+    gridLayout_2 = new QGridLayout(day);
+    gridLayout_2->setObjectName(QString::fromUtf8("gridLayout_2"));
+    gridLayout_2->setContentsMargins(0, 0, 0, 0);
+    gridLayout_2->setSpacing(0);
+    
+    vday = new QVBoxLayout();
+    vday->setObjectName(QString::fromUtf8("vday"));
+    vday->setSpacing(0);
+    
+    gridLayout_2->addLayout(vday, 0, 0, 1, 1);
+    
+    tabWidget->addTab(day, "日线");
+    
+    // Day K tab
+    tab = new QWidget();
+    tab->setObjectName(QString::fromUtf8("tab"));
+    
+    gridLayout_5 = new QGridLayout(tab);
+    gridLayout_5->setObjectName(QString::fromUtf8("gridLayout_5"));
+    gridLayout_5->setContentsMargins(0, 0, 0, 0);
+    gridLayout_5->setSpacing(0);
+    
+    dayK = new QVBoxLayout();
+    dayK->setObjectName(QString::fromUtf8("dayK"));
+    
+    gridLayout_5->addLayout(dayK, 0, 0, 1, 1);
+    
+    tabWidget->addTab(tab, "日K线");
+    
+    // Week K tab
+    week = new QWidget();
+    week->setObjectName(QString::fromUtf8("week"));
+    
+    gridLayout_3 = new QGridLayout(week);
+    gridLayout_3->setObjectName(QString::fromUtf8("gridLayout_3"));
+    gridLayout_3->setContentsMargins(0, 0, 0, 0);
+    gridLayout_3->setSpacing(0);
+    
+    weekK = new QVBoxLayout();
+    weekK->setObjectName(QString::fromUtf8("weekK"));
+    
+    gridLayout_3->addLayout(weekK, 0, 0, 1, 1);
+    
+    tabWidget->addTab(week, "周K线");
+    
+    // Month K tab
+    month = new QWidget();
+    month->setObjectName(QString::fromUtf8("month"));
+    
+    gridLayout_4 = new QGridLayout(month);
+    gridLayout_4->setObjectName(QString::fromUtf8("gridLayout_4"));
+    gridLayout_4->setContentsMargins(0, 0, 0, 0);
+    gridLayout_4->setSpacing(0);
+    
+    monthK = new QVBoxLayout();
+    monthK->setObjectName(QString::fromUtf8("monthK"));
+    monthK->setSpacing(0);
+    
+    gridLayout_4->addLayout(monthK, 0, 0, 1, 1);
+    
+    tabWidget->addTab(month, "月K线");
+    
+    gridLayout->addWidget(tabWidget, 0, 0, 1, 1);
 }

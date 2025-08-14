@@ -2,6 +2,19 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGridLayout>
+#include <QStackedWidget>
+#include <QTableWidget>
+#include <QPushButton>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QFrame>
+#include <QMenuBar>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QHeaderView>
 
 #include <QMap>
 #include <QSqlDatabase>
@@ -15,9 +28,6 @@ class QTableWidgetItem;
 class StockCanvas;
 class QLabel;
 class stackStock;
-namespace Ui {
-class MainWindow;
-}
 
 class MainWindow : public QMainWindow
 {
@@ -64,7 +74,36 @@ private slots:
     void on_tableWidget_cellDoubleClicked(int row, int column);
 
 private:
-    Ui::MainWindow *ui;
+    void setupUi();
+    
+    // UI elements
+    QWidget *centralWidget;
+    QVBoxLayout *verticalLayout_2;
+    QHBoxLayout *viewLayout;
+    QVBoxLayout *shlayout;
+    QVBoxLayout *szlayout;
+    QVBoxLayout *cylayout;
+    QHBoxLayout *horizontalLayout_2;
+    QPushButton *normalBtn;
+    QPushButton *myBtn;
+    QStackedWidget *stackedWidget;
+    QWidget *page;
+    QGridLayout *gridLayout;
+    QFrame *normalFrame;
+    QVBoxLayout *verticalLayout;
+    QHBoxLayout *horizontalLayout;
+    QComboBox *comboBox;
+    QLineEdit *searchEdit;
+    QPushButton *pushButton;
+    QTableWidget *miniTable;
+    QTableWidget *tableWidget;
+    QWidget *page_2;
+    QGridLayout *gridLayout_2;
+    QPushButton *addMyBtn;
+    QTableWidget *myTable;
+    QMenuBar *menuBar;
+    QToolBar *mainToolBar;
+    QStatusBar *statusBar;
 //    QSystemTrayIcon *m_trayIcon{nullptr};
     QNetworkAccessManager *manager {nullptr};
     QNetworkAccessManager *manager2 {nullptr};

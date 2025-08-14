@@ -47,7 +47,7 @@ floatBall::floatBall(QWidget *parent):
     m_floatShowLabel->setStyleSheet("QLabel { padding:2px; color:white; background-color:rgba(0,0,0,200); border-radius:15px; }");//无效
 
     m_trayIcon = new QSystemTrayIcon(this);
-    m_trayIcon->setToolTip("摸鱼股票球");
+    m_trayIcon->setToolTip("股票监控系统");
     QIcon icon(":/stock.png");
     m_trayIcon->setIcon(icon);
     m_trayIcon->show();

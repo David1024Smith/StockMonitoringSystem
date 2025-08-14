@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Qt/5.15.2/mingw81_64/include/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtCore/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtGui/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtWidgets/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtNetwork/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtSql/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtXml/**",
+                "C:/Qt/5.15.2/mingw81_64/include/QtXmlPatterns/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.26100.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}

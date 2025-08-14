@@ -17,6 +17,8 @@
 #include <fcntl.h>
 #include <QMap>
 
+
+
 //进程单例
 bool checkOnly()
 {
@@ -51,13 +53,17 @@ Q_DECLARE_METATYPE(MapdataGP);
 Q_DECLARE_METATYPE(DataAllDP);
 int main(int argc, char *argv[])
 {
-
     qRegisterMetaType< MapdataGP>("MapdataGP");
     qRegisterMetaType< MapdataHaveGP>("MapdataHaveGP");
     qRegisterMetaType<DataHaveGP>("DataHaveGP");
     qRegisterMetaType<DataGP>("DataGP");
     qRegisterMetaType<DataAllDP>("DataAllDP");
     application a(argc, argv);
+    
+    // 测试调试输出
+    qDebug() << "程序启动，Qt版本:" << QT_VERSION_STR;
+    qDebug() << "调试输出正常工作！";
+    
     //    MainWindow w;
     //    w.show();
 

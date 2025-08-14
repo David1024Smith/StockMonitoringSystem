@@ -63,6 +63,10 @@ void StockKlineViewData::setData(const QString &code, KlineEnum enumK)
 {
     szSecCodec = code;
     m_enum = enumK;
+    
+    QString klineTypeName = (enumK == DAYKLINE) ? "日K线" : (enumK == WEEKKLINE) ? "周K线" : "月K线";
+    qDebug() << "设置股票数据 - 代码:" << code << "类型:" << klineTypeName;
+    
     updateData();
 }
 void StockKlineViewData::updateData()
@@ -87,17 +91,11 @@ void StockKlineViewData::tryNextApi()
             // 备用：新浪财经API (只有当天数据)
             apiUrls << QString("http://hq.sinajs.cn/list=%1").arg(szSecCodec);
         } else if (m_enum == WEEKKLINE) {
-            // 对于周K线，使用网易API获取数据
-            QString code = szSecCodec;
-            QString prefix = code.startsWith("sh") ? "0" : "1";
-            QString codeNum = code.mid(2);
-            apiUrls << QString("http://api.money.126.net/data/feed/%1%2,money.api").arg(prefix).arg(codeNum);
+            // 对于周K线，使用新浪API获取基础数据然后生成测试数据
+            apiUrls << QString("http://hq.sinajs.cn/list=%1").arg(szSecCodec);
         } else {
-            // 对于月K线，使用网易API获取数据
-            QString code = szSecCodec;
-            QString prefix = code.startsWith("sh") ? "0" : "1";
-            QString codeNum = code.mid(2);
-            apiUrls << QString("http://api.money.126.net/data/feed/%1%2,money.api").arg(prefix).arg(codeNum);
+            // 对于月K线，使用新浪API获取基础数据然后生成测试数据
+            apiUrls << QString("http://hq.sinajs.cn/list=%1").arg(szSecCodec);
         }
         
         if (currentApiIndex < apiUrls.size()) {
@@ -345,30 +343,62 @@ void StockKlineViewData::parseWangyiData(const QString& text)
 
 void StockKlineViewData::generateTestData(const KLine& baseData)
 {
-    qDebug() << "开始生成测试数据，基础数据开盘价:" << baseData.openingPrice;
+    QString klineTypeName = (m_enum == DAYKLINE) ? "日K线" : (m_enum == WEEKKLINE) ? "周K线" : "月K线";
+    qDebug() << "开始生成测试数据，K线类型:" << klineTypeName << "基础数据开盘价:" << baseData.openingPrice;
     
     // 清空之前的数据
     m_vec.clear();
     
-    // 生成30天的测试数据
-    QDate startDate = QDate::currentDate().addDays(-29);
+    int dataCount = 30; // 默认30个数据点
+    int dayStep = 1; // 默认每天
+    
+    // 根据K线类型调整数据点数量和时间步长
+    if (m_enum == WEEKKLINE) {
+        dataCount = 52; // 52周
+        dayStep = 7; // 每周
+        qDebug() << "生成周K线数据，52周";
+    } else if (m_enum == MONTHKLINE) {
+        dataCount = 12; // 12个月
+        dayStep = 30; // 每月
+        qDebug() << "生成月K线数据，12个月";
+    } else {
+        qDebug() << "生成日K线数据，30天";
+    }
+    
+    QDate startDate = QDate::currentDate().addDays(-(dataCount - 1) * dayStep);
     double lastClose = baseData.openingPrice;
     
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < dataCount; i++) {
         KLine tmp;
-        QDate currentDate = startDate.addDays(i);
-        tmp.time = currentDate.toString("yyyy-MM-dd");
+        QDate currentDate = startDate.addDays(i * dayStep);
         
-        // 生成随机波动数据（在基础价格的±5%范围内）
-        double basePrice = baseData.openingPrice;
-        double variation = basePrice * 0.05; // 5% 波动
+        // 根据K线类型设置时间格式
+        if (m_enum == WEEKKLINE) {
+            tmp.time = currentDate.toString("yyyy-MM-dd") + " (第" + QString::number(currentDate.weekNumber()) + "周)";
+        } else if (m_enum == MONTHKLINE) {
+            tmp.time = currentDate.toString("yyyy-MM") + " (月)";
+        } else {
+            tmp.time = currentDate.toString("yyyy-MM-dd");
+        }
         
-        // 生成开盘价（在上一日收盘价±2%范围内）
-        double openVariation = lastClose * 0.02;
+        // 根据K线类型调整波动范围
+        double openVariationPercent = 0.02; // 开盘价波动范围
+        double dayVariationPercent = 0.03;  // 日内波动范围
+        
+        if (m_enum == WEEKKLINE) {
+            openVariationPercent = 0.05; // 周K线5%波动
+            dayVariationPercent = 0.08;  // 周内8%波动
+        } else if (m_enum == MONTHKLINE) {
+            openVariationPercent = 0.10; // 月K线10%波动
+            dayVariationPercent = 0.15;  // 月内15%波动
+        }
+        
+        // 生成开盘价（在上一期收盘价的波动范围内）
+        double openVariation = lastClose * openVariationPercent;
         tmp.openingPrice = lastClose + ((rand() % 100 - 50) / 50.0) * openVariation;
         
         // 生成最高价和最低价（围绕开盘价波动）
-        double dayVariation = tmp.openingPrice * 0.03; // 3% 日内波动
+        double dayVariation = tmp.openingPrice * dayVariationPercent;
         tmp.highestBid = tmp.openingPrice + ((rand() % 50) / 50.0) * dayVariation;
         tmp.lowestBid = tmp.openingPrice - ((rand() % 50) / 50.0) * dayVariation;
         
@@ -405,10 +435,12 @@ void StockKlineViewData::generateTestData(const KLine& baseData)
         lastClose = tmp.closeingPrice;
         m_vec.push_back(tmp);
         
-        qDebug() << "生成第" << i+1 << "天数据:" << tmp.time << "开盘:" << tmp.openingPrice << "收盘:" << tmp.closeingPrice;
+        if (i < 3 || i >= dataCount - 3) { // 只打印前3条和后3条数据避免日志过多
+            qDebug() << "生成第" << i+1 << "条数据:" << tmp.time << "开盘:" << tmp.openingPrice << "收盘:" << tmp.closeingPrice;
+        }
     }
     
-    qDebug() << "测试数据生成完成，共" << m_vec.size() << "条数据";
+    qDebug() << "测试数据生成完成，共" << m_vec.size() << "条数据，数据类型:" << klineTypeName;
 }
 
 void StockKlineViewData::replyFinished(QNetworkReply *reply)

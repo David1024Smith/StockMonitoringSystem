@@ -32,10 +32,10 @@ void AutoGrid::resizeEvent(QResizeEvent *event)
 
 void AutoGrid::initial()
 {
-    atomGridHeight = 60;
-    atomGridHeightMin = 60;
-    atomGridWidth = 640;
-    atomGridWidthMin = 640;
+    atomGridHeight = 30;
+    atomGridHeightMin = 30;
+    atomGridWidth = 60;
+    atomGridWidthMin = 60;
     drawBK();
 }
 
@@ -48,6 +48,10 @@ void AutoGrid::calAtomGridHeight()
         ++hGridNum;
         height -= atomGridHeightMin;
     }
+    // 防止除零错误，确保至少有1个网格
+    if (hGridNum <= 0) {
+        hGridNum = 1;
+    }
     atomGridHeight = gridHeight / hGridNum;
 }
 
@@ -59,8 +63,11 @@ void AutoGrid::calAtomGridWidth()
         ++wGridNum;
         width -= atomGridWidthMin;
     }
+    // 防止除零错误，确保至少有1个网格
+    if (wGridNum <= 0) {
+        wGridNum = 1;
+    }
     atomGridWidth = gridWidth / wGridNum;
-
 }
 
 void AutoGrid::paintEvent(QPaintEvent *event)

@@ -76,9 +76,8 @@ bool KLineGrid::readData(std::vector<KLine> datas)
         }
         
         update();
-        repaint(); // 强制立即重绘
         
-        qDebug() << "KLineGrid::readData - update()和repaint()调用完成";
+        qDebug() << "KLineGrid::readData - update()调用完成";
         
         return true;
     } catch (const std::exception& e) {
@@ -313,7 +312,7 @@ void KLineGrid::drawKline()
         return;
     }
 
-    double xstep = getGridWidth() / totalDay;
+    double xstep = (totalDay > 1) ? (getGridWidth() / totalDay) : getGridWidth();
     qDebug() << "KLineGrid::drawKline - X轴步长:" << xstep;
 
     for (int i = beginDay; i < endDay; ++i) {
@@ -324,7 +323,7 @@ void KLineGrid::drawKline()
             pen.setColor(Qt::red);
 
 
-        lineWidth = getGridWidth() / totalDay;
+        lineWidth = (totalDay > 1) ? (getGridWidth() / totalDay) : 20;
 
         //为了各个k线之间不贴在一起，设置一个间隔
         lineWidth = lineWidth - 0.2 * lineWidth;

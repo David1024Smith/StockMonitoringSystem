@@ -35,6 +35,8 @@ private :
     void parseJsonData(const QByteArray& data); // 解析JSON格式数据
     void parseTextData(const QByteArray& data); // 解析文本格式数据
     void parseSinaData(const QString& text); // 解析新浪API数据
+    void parseWangyiData(const QString& text); // 解析网易API数据
+    void generateTestData(const KLine& baseData); // 生成测试数据
     QNetworkAccessManager *manager {nullptr};
     QNetworkReply *reply {nullptr};
     QString szSecID;

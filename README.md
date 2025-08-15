@@ -1,7 +1,7 @@
 # StockMonitoringSystem
 股票监控系统 (StockMonitoringSystem)，采用的是qt和新浪的api来设计
 
-# 2025/8/15修复总结
+# ![PixPin_2025-08-15_14-01-33](./img/PixPin_2025-08-15_14-01-33.png)2025/8/15修复总结
 
 
 ### 1. 日K、周K、月K显示问题

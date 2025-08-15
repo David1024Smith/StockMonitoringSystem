@@ -2,6 +2,7 @@
 #include "stockView/stockcanvas.h"
 #include "stockKlineView/stockklineviewdata.h"
 #include "application.h"
+#include "QDebug"
 
 stackStock::stackStock(QWidget *parent) :
     QWidget(parent)
@@ -32,6 +33,9 @@ void stackStock::setData(QString code)
         } else {
             m_Stock->setIDandTime(chSecID);
         }
+        
+        // 调试输出
+        qDebug() << "日线数据设置 - 原始代码:" << code << "转换后代码:" << codec;
         m_Stock->setWindowTitle(codec);
 //        m_Stock->show();
 

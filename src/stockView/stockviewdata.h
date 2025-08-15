@@ -50,11 +50,21 @@ private slots:
     void replyFinished(QNetworkReply *reply);
     void updateData();
 private:
+    void tryNextApi(const QStringList& apiUrls);
+    void retryWithNextApi();
+    void parseWangyiData(const QJsonDocument& json);
+    void parseTencentData(const QJsonDocument& json);
+    void parseEastMoneyData(const QJsonDocument& json);
+    void parseSinaData(const QString& responseStr);
+    void generateTestData();
+    void generateTestDataFromPrice(double currentPrice, double yesterdayClose);
+    
     QNetworkAccessManager *manager {nullptr};
     QNetworkReply *reply {nullptr};
     QString szSecID;
     QString szDate;
     QTimer *m_timer{nullptr};
+    int currentApiIndex{0};
 };
 
 #endif // STOCKVIEWDATA_H

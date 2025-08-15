@@ -43,48 +43,40 @@ bool KLineGrid::readData(std::vector<KLine> datas)
     QMutexLocker locker(m_mutex);
     
     try {
-        qDebug() << "KLineGrid::readData - 开始处理数据，条数:" << datas.size();
-        
         if (!mDataFile.readData(datas)) {
             qDebug() << "KLineGrid::readData - DataFile.readData失败";
             return false;
         }
         
-        qDebug() << "KLineGrid::readData - DataFile.readData成功，kline大小:" << mDataFile.kline.size();
-        
-        endDay = mDataFile.kline.size();  // 改为不减1，让endDay作为上界
+        // 修复索引设置，确保正确的边界
         totalDay = mDataFile.kline.size();
-        beginDay = 0;  // 从0开始
+        beginDay = 0;
+        endDay = totalDay; // endDay作为上界，不包含在绘制范围内
         currentDay = totalDay / 2;
         
-        qDebug() << "KLineGrid::readData - 设置索引: beginDay=" << beginDay << " endDay=" << endDay << " totalDay=" << totalDay;
+
         
+        // 重置价格范围
         highestBid = 0;
         lowestBid = 100000;
         maxVolume = 0;
         
-        qDebug() << "KLineGrid::readData - 准备调用update()";
-        qDebug() << "组件可见性:" << isVisible() << " 尺寸:" << size() << " 位置:" << pos();
-        qDebug() << "网格尺寸: width=" << getWidgetWidth() << " height=" << getWidgetHeight();
-        qDebug() << "绘制区域: gridWidth=" << getGridWidth() << " gridHeight=" << getGridHeight();
-        
         // 确保组件尺寸正确初始化
         if (getWidgetWidth() == 0 || getWidgetHeight() == 0) {
-            qDebug() << "组件尺寸为0，强制触发resizeEvent";
             QResizeEvent resizeEvent(size(), size());
             this->resizeEvent(&resizeEvent);
         }
         
         update();
         
-        qDebug() << "KLineGrid::readData - update()调用完成";
+        qDebug() << "KLineGrid数据加载成功，共" << totalDay << "条K线数据";
         
         return true;
     } catch (const std::exception& e) {
-        qDebug() << "KLineGrid::readData - 捕获异常:" << e.what();
+        qDebug() << "KLineGrid::readData异常:" << e.what();
         return false;
     } catch (...) {
-        qDebug() << "KLineGrid::readData - 捕获未知异常";
+        qDebug() << "KLineGrid::readData未知异常";
         return false;
     }
 }
@@ -162,18 +154,14 @@ void KLineGrid::initial()
 void KLineGrid::paintEvent(QPaintEvent *event)
 {
     QMutexLocker locker(m_mutex);
-    qDebug() << "KLineGrid::paintEvent - 开始绘制事件";
     AutoGrid::paintEvent(event);
     //画k线
     drawLine();
-    qDebug() << "KLineGrid::paintEvent - 绘制事件完成";
 }
 
 
 void KLineGrid::drawLine()
 {
-    qDebug() << "KLineGrid::drawLine - 开始绘制流程";
-    
     //获取y轴指标
     getIndicator();
 
@@ -182,7 +170,6 @@ void KLineGrid::drawLine()
 
     //画k线
     drawKline();
-
 
     //画十字线
     if (!isKeyDown && bCross) {
@@ -193,50 +180,48 @@ void KLineGrid::drawLine()
         drawCross();
     }
 
-
-    //画5日均线
-    drawAverageLine(5);
-    //画5日均线
-    drawAverageLine(10);
-    //画5日均线
-    drawAverageLine(20);
-    //画5日均线
-    drawAverageLine(30);
-    //画5日均线
-    drawAverageLine(60);
-
+    //画均线
+    if (isDrawAverageLine) {
+        drawAverageLine(5);
+        drawAverageLine(10);
+        drawAverageLine(20);
+        drawAverageLine(30);
+        drawAverageLine(60);
+    }
 }
 
 
 void KLineGrid::getIndicator()
 {
-    qDebug() << "KLineGrid::getIndicator - 开始计算指标，数据范围:" << beginDay << "到" << endDay;
-    
     highestBid = 0;
     lowestBid = 100000;
     maxVolume = 0;
 
-    if (endDay <= mDataFile.kline.size() && beginDay < endDay) {
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].highestBid > highestBid)
-                highestBid = mDataFile.kline[i].highestBid;
-            if (mDataFile.kline[i].lowestBid < lowestBid)
-                lowestBid = mDataFile.kline[i].lowestBid;
-            //        if( mDataFile.kline[i].totalVolume.toFloat() > maxVolume )
-            //            maxVolume = mDataFile.kline[i].totalVolume.toFloat();
-        }
-        
-        // 如果最高价和最低价相同，需要调整范围以避免除零错误
-        if (highestBid == lowestBid) {
-            double mid = highestBid;
-            highestBid = mid + mid * 0.01; // 增加1%
-            lowestBid = mid - mid * 0.01;  // 减少1%
-            if (lowestBid < 0) lowestBid = 0;
-        }
-        
-        qDebug() << "KLineGrid::getIndicator - 计算结果: 最高价=" << highestBid << " 最低价=" << lowestBid;
-    } else {
-        qDebug() << "KLineGrid::getIndicator - 无效的数据范围或数据为空";
+    if (mDataFile.kline.empty()) {
+        return;
+    }
+
+    // 确保索引范围有效
+    int actualBeginDay = qMax(0, beginDay);
+    int actualEndDay = qMin(endDay, (int)mDataFile.kline.size());
+    
+    if (actualBeginDay >= actualEndDay) {
+        return;
+    }
+
+    for (int i = actualBeginDay; i < actualEndDay; ++i) {
+        if (mDataFile.kline[i].highestBid > highestBid)
+            highestBid = mDataFile.kline[i].highestBid;
+        if (mDataFile.kline[i].lowestBid < lowestBid)
+            lowestBid = mDataFile.kline[i].lowestBid;
+    }
+    
+    // 如果最高价和最低价相同，需要调整范围以避免除零错误
+    if (highestBid == lowestBid) {
+        double mid = highestBid;
+        highestBid = mid + mid * 0.01; // 增加1%
+        lowestBid = mid - mid * 0.01;  // 减少1%
+        if (lowestBid < 0) lowestBid = 0;
     }
 }
 
@@ -273,142 +258,112 @@ void KLineGrid::drawYtick()
 
 void KLineGrid::drawKline()
 {
-    qDebug() << "KLineGrid::drawKline - 开始绘制K线";
-    qDebug() << "绘制参数: beginDay=" << beginDay << " endDay=" << endDay << " totalDay=" << totalDay;
-    qDebug() << "价格范围: 最高=" << highestBid << " 最低=" << lowestBid;
+    if (mDataFile.kline.empty()) {
+        return;
+    }
     
     QPainter painter(this);
     QPen     pen;
     pen.setColor(Qt::red);
     painter.setPen(pen);
 
-    if (beginDay < 0) {
-        qDebug() << "KLineGrid::drawKline - beginDay < 0，退出绘制";
-        return;
-    }
+    // 确保索引范围有效
+    int actualBeginDay = qMax(0, beginDay);
+    int actualEndDay = qMin(endDay, (int)mDataFile.kline.size());
     
-    if (endDay <= beginDay) {
-        qDebug() << "KLineGrid::drawKline - endDay <= beginDay，退出绘制";
+    if (actualBeginDay >= actualEndDay) {
         return;
     }
 
     //y轴缩放
     if (highestBid == lowestBid) {
-        qDebug() << "KLineGrid::drawKline - 最高价等于最低价，使用默认缩放";
         yscale = 1.0;
     } else {
         yscale = getGridHeight() / (highestBid - lowestBid);
-        qDebug() << "KLineGrid::drawKline - Y轴缩放比例:" << yscale;
     }
 
     //画线连接的两个点
-    QPoint p1;
-    QPoint p2;
-    QPoint p3;
-    QPoint p4;
+    QPoint p1, p2, p3, p4;
 
     if (getGridWidth() <= 0 || getGridHeight() <= 0) {
-        qDebug() << "KLineGrid::drawKline - 绘制区域尺寸无效: gridWidth=" << getGridWidth() << " gridHeight=" << getGridHeight();
         return;
     }
 
-    double xstep = (totalDay > 1) ? (getGridWidth() / totalDay) : getGridWidth();
-    qDebug() << "KLineGrid::drawKline - X轴步长:" << xstep;
+    // 修复X轴步长计算，使用实际显示的数据量
+    int displayDataCount = actualEndDay - actualBeginDay;
+    double xstep = (displayDataCount > 1) ? (getGridWidth() / displayDataCount) : getGridWidth();
 
-    for (int i = beginDay; i < endDay; ++i) {
-        qDebug() << "绘制第" << i << "个K线，开盘价:" << mDataFile.kline[i].openingPrice << " 收盘价:" << mDataFile.kline[i].closeingPrice;
+    for (int i = actualBeginDay; i < actualEndDay; ++i) {
+        // 设置K线颜色
         if (mDataFile.kline[i].openingPrice > mDataFile.kline[i].closeingPrice)
-            pen.setColor(QColor(85, 252, 252));
+            pen.setColor(QColor(85, 252, 252)); // 阴线：青色
         else
-            pen.setColor(Qt::red);
+            pen.setColor(Qt::red); // 阳线：红色
 
+        // 计算K线宽度
+        lineWidth = (displayDataCount > 1) ? (getGridWidth() / displayDataCount) : 20;
+        lineWidth = lineWidth - 0.2 * lineWidth; // 设置间隔
+        if (lineWidth < 3) lineWidth = 3; // 最小线宽
 
-        lineWidth = (totalDay > 1) ? (getGridWidth() / totalDay) : 20;
-
-        //为了各个k线之间不贴在一起，设置一个间隔
-        lineWidth = lineWidth - 0.2 * lineWidth;
-
-        //最小线宽为3
-        if (lineWidth < 3)
-            lineWidth = 3;
+        // 计算当前K线的X位置
+        double xPos = getMarginLeft() + xstep * (i - actualBeginDay);
 
         //阴线 (开盘价 > 收盘价)
         if (mDataFile.kline[i].openingPrice > mDataFile.kline[i].closeingPrice) {
             //画开盘与收盘之间的粗实线
             pen.setWidth(lineWidth);
             painter.setPen(pen);
-            p1.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p1.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) *yscale - getMarginBottom());
-            p2.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p2.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) *yscale - getMarginBottom() - 0.5 * lineWidth);
+            p1.setX(xPos + 0.5 * lineWidth);
+            p1.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) * yscale - getMarginBottom());
+            p2.setX(xPos + 0.5 * lineWidth);
+            p2.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) * yscale - getMarginBottom());
             painter.drawLine(p1, p2);
-
 
             //画最高价与最低价之间的细线
             pen.setWidth(1);
             painter.setPen(pen);
-            p1.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p1.setY(getWidgetHeight() - (mDataFile.kline[i].highestBid - lowestBid) *yscale - getMarginBottom());
-            p2.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p2.setY(getWidgetHeight() - (mDataFile.kline[i].lowestBid - lowestBid) *yscale - getMarginBottom());
+            p1.setX(xPos + 0.5 * lineWidth);
+            p1.setY(getWidgetHeight() - (mDataFile.kline[i].highestBid - lowestBid) * yscale - getMarginBottom());
+            p2.setX(xPos + 0.5 * lineWidth);
+            p2.setY(getWidgetHeight() - (mDataFile.kline[i].lowestBid - lowestBid) * yscale - getMarginBottom());
             painter.drawLine(p1, p2);
-
-
         } else {
-            //像同花顺一样阳线画成空心的
-
+            //阳线画成空心的
             pen.setWidth(1);
             painter.setPen(pen);
 
-
-            p1.setX(getMarginLeft() + xstep * (i - beginDay));
-            p1.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) *yscale - getMarginBottom());
-
-            p2.setX(getMarginLeft() + xstep * (i - beginDay) + lineWidth);
-            p2.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) *yscale - getMarginBottom());
-
-
-            p3.setX(getMarginLeft() + xstep * (i - beginDay));
-            p3.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) *yscale - getMarginBottom());
-
-            p4.setX(getMarginLeft() + xstep * (i - beginDay) + lineWidth);
-            p4.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) *yscale - getMarginBottom());
+            // 画矩形框
+            p1.setX(xPos);
+            p1.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) * yscale - getMarginBottom());
+            p2.setX(xPos + lineWidth);
+            p2.setY(getWidgetHeight() - (mDataFile.kline[i].openingPrice - lowestBid) * yscale - getMarginBottom());
+            p3.setX(xPos);
+            p3.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) * yscale - getMarginBottom());
+            p4.setX(xPos + lineWidth);
+            p4.setY(getWidgetHeight() - (mDataFile.kline[i].closeingPrice - lowestBid) * yscale - getMarginBottom());
 
             painter.drawLine(p1, p2);
             painter.drawLine(p1, p3);
             painter.drawLine(p2, p4);
             painter.drawLine(p3, p4);
 
-
             //画最高价与最低价之间的细线
-            pen.setWidth(1);
-            painter.setPen(pen);
-            p1.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p1.setY(getWidgetHeight() - (mDataFile.kline[i].highestBid - lowestBid) *yscale - getMarginBottom());
+            double y1 = qMax(mDataFile.kline[i].openingPrice, mDataFile.kline[i].closeingPrice);
+            double y2 = qMin(mDataFile.kline[i].openingPrice, mDataFile.kline[i].closeingPrice);
 
-
-            double y1, y2;
-            if (mDataFile.kline[i].openingPrice > mDataFile.kline[i].closeingPrice) {
-                y1 = mDataFile.kline[i].openingPrice;
-                y2 = mDataFile.kline[i].closeingPrice;
-            } else {
-                y1 = mDataFile.kline[i].closeingPrice;
-                y2 = mDataFile.kline[i].openingPrice;
-            }
-
-            p2.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p2.setY(getWidgetHeight() - (y1 - lowestBid) *yscale - getMarginBottom());
-            p3.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p3.setY(getWidgetHeight() - (y2 - lowestBid) *yscale - getMarginBottom());
-            p4.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            p4.setY(getWidgetHeight() - (mDataFile.kline[i].lowestBid - lowestBid) *yscale - getMarginBottom());
+            p1.setX(xPos + 0.5 * lineWidth);
+            p1.setY(getWidgetHeight() - (mDataFile.kline[i].highestBid - lowestBid) * yscale - getMarginBottom());
+            p2.setX(xPos + 0.5 * lineWidth);
+            p2.setY(getWidgetHeight() - (y1 - lowestBid) * yscale - getMarginBottom());
+            p3.setX(xPos + 0.5 * lineWidth);
+            p3.setY(getWidgetHeight() - (y2 - lowestBid) * yscale - getMarginBottom());
+            p4.setX(xPos + 0.5 * lineWidth);
+            p4.setY(getWidgetHeight() - (mDataFile.kline[i].lowestBid - lowestBid) * yscale - getMarginBottom());
 
             painter.drawLine(p1, p2);
             painter.drawLine(p3, p4);
         }
     }
-    
-    qDebug() << "KLineGrid::drawKline - K线绘制完成";
 }
 
 void KLineGrid::keyPressEvent(QKeyEvent *event)
@@ -436,13 +391,12 @@ void KLineGrid::keyPressEvent(QKeyEvent *event)
         double xstep = getGridWidth() / totalDay ;
 
         if (mousePoint.x() + xstep > getWidgetWidth() - getMarginRight()) {
-            if (endDay + 1 > mDataFile.kline.size() - 1)
+            if (endDay >= mDataFile.kline.size())
                 return;
             endDay += 1;
             beginDay += 1;
         } else
             mousePoint.setX(mousePoint.x() + xstep);
-
 
         update();
         break;
@@ -457,53 +411,48 @@ void KLineGrid::keyPressEvent(QKeyEvent *event)
             return;
         }
 
-
         endDay = currentDay + totalDay / 2;
         beginDay = currentDay - totalDay / 2;
 
-        if (endDay > mDataFile.kline.size() - 10) {
-            endDay = mDataFile.kline.size() - 10;
+        if (endDay > mDataFile.kline.size()) {
+            endDay = mDataFile.kline.size();
             beginDay = endDay - totalDay;
         }
 
         if (beginDay < 0) {
             beginDay = 0;
             endDay = beginDay + totalDay;
+            if (endDay > mDataFile.kline.size()) {
+                endDay = mDataFile.kline.size();
+            }
         }
 
         update();
-
-
         break;
     }
 
     case Qt::Key_Down: {
-        if (totalDay == mDataFile.kline.size() - 1)
+        if (totalDay >= mDataFile.kline.size())
             return;
 
         totalDay = totalDay * 2;
-        if (totalDay > mDataFile.kline.size() - 1) {
-            totalDay = mDataFile.kline.size() - 1;
+        if (totalDay > mDataFile.kline.size()) {
+            totalDay = mDataFile.kline.size();
         }
-
 
         endDay = currentDay + totalDay / 2;
-        if (endDay > mDataFile.kline.size() - 10) {
-            endDay = mDataFile.kline.size() - 10;
+        if (endDay > mDataFile.kline.size()) {
+            endDay = mDataFile.kline.size();
         }
-
-
 
         beginDay = currentDay - totalDay / 2;
         if (beginDay < 0)
             beginDay = 0;
 
-
-
         totalDay = endDay - beginDay;
 
         update();
-
+        break;
     }
     default:
         break;
@@ -758,80 +707,70 @@ void KLineGrid::drawTips2()
 
 void KLineGrid::drawAverageLine(int day)
 {
+    if (mDataFile.kline.empty() || highestBid == lowestBid) {
+        return;
+    }
+
+    // 确保索引范围有效
+    int actualBeginDay = qMax(0, beginDay);
+    int actualEndDay = qMin(endDay, (int)mDataFile.kline.size());
+    
+    if (actualBeginDay >= actualEndDay) {
+        return;
+    }
 
     //y轴缩放
-    yscale = getGridHeight() / (highestBid - lowestBid) ;
-    //画笔的线宽
-    lineWidth;
+    yscale = getGridHeight() / (highestBid - lowestBid);
     //画线要连接的点
     QVector<QPoint> point;
-
     //临时点
     QPoint temp;
 
-    //x轴步进
-    double xstep = getGridWidth() / totalDay;
+    // 修复X轴步长计算
+    int displayDataCount = actualEndDay - actualBeginDay;
+    double xstep = (displayDataCount > 1) ? (getGridWidth() / displayDataCount) : getGridWidth();
 
-
-
-    if (beginDay < 0)
-        return;
-
-
-    switch (day) {
-    case 5:
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].averageLine5 == 0)
-                continue;
-            temp.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            temp.setY(getWidgetHeight() - (mDataFile.kline[i].averageLine5 - lowestBid) *yscale - getMarginBottom());
-            point.push_back(temp);
+    // 根据均线天数选择对应的数据
+    for (int i = actualBeginDay; i < actualEndDay; ++i) {
+        double averageValue = 0;
+        
+        switch (day) {
+        case 5:
+            averageValue = mDataFile.kline[i].averageLine5;
+            break;
+        case 10:
+            averageValue = mDataFile.kline[i].averageLine10;
+            break;
+        case 20:
+            averageValue = mDataFile.kline[i].averageLine20;
+            break;
+        case 30:
+            averageValue = mDataFile.kline[i].averageLine30;
+            break;
+        case 60:
+            averageValue = mDataFile.kline[i].averageLine60;
+            break;
+        default:
+            continue;
         }
-        break;
-    case 10:
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].averageLine10 == 0)
-                continue;
-            temp.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            temp.setY(getWidgetHeight() - (mDataFile.kline[i].averageLine10 - lowestBid) *yscale - getMarginBottom());
-            point.push_back(temp);
+        
+        if (averageValue <= 0) {
+            continue;
         }
-        break;
-    case 20:
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].averageLine20 == 0)
-                continue;
-            temp.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            temp.setY(getWidgetHeight() - (mDataFile.kline[i].averageLine20 - lowestBid) *yscale - getMarginBottom());
-            point.push_back(temp);
-        }
-        break;
-    case 30:
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].averageLine30 == 0)
-                continue;
-            temp.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            temp.setY(getWidgetHeight() - (mDataFile.kline[i].averageLine30 - lowestBid) *yscale - getMarginBottom());
-            point.push_back(temp);
-        }
-        break;
-    case 60:
-        for (int i = beginDay; i < endDay; ++i) {
-            if (mDataFile.kline[i].averageLine60 == 0)
-                continue;
-            temp.setX(getMarginLeft() + xstep * (i - beginDay) + 0.5 * lineWidth);
-            temp.setY(getWidgetHeight() - (mDataFile.kline[i].averageLine60 - lowestBid) *yscale - getMarginBottom());
-            point.push_back(temp);
-        }
-        break;
-    default:
-        break;
+        
+        temp.setX(getMarginLeft() + xstep * (i - actualBeginDay) + 0.5 * lineWidth);
+        temp.setY(getWidgetHeight() - (averageValue - lowestBid) * yscale - getMarginBottom());
+        point.push_back(temp);
     }
 
+    if (point.size() < 2) {
+        return; // 需要至少2个点才能画线
+    }
 
     QPainter painter(this);
-    QPen     pen;
+    QPen pen;
 
+    // 设置均线颜色
     switch (day) {
     case 5:
         pen.setColor(Qt::white);
@@ -852,6 +791,8 @@ void KLineGrid::drawAverageLine(int day)
         pen.setColor(Qt::white);
         break;
     }
+    
+    pen.setWidth(1);
     painter.setPen(pen);
     QPolygon polykline(point);
     painter.drawPolyline(polykline);

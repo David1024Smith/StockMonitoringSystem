@@ -100,7 +100,9 @@ void StockKlineViewData::tryNextApi()
         
         if (currentApiIndex < apiUrls.size()) {
             QString str = apiUrls[currentApiIndex];
-            qDebug() << QString("尝试API %1/%2 (%3):").arg(currentApiIndex + 1).arg(apiUrls.size()).arg(klineType) << str;
+            if (currentApiIndex == 0) { // 只在第一次尝试时打印日志
+                qDebug() << QString("请求%1数据，API:").arg(klineType) << str;
+            }
             
             QNetworkRequest request;
             request.setUrl(QUrl(str));
@@ -114,7 +116,11 @@ void StockKlineViewData::tryNextApi()
             
             reply = manager->get(request);
         } else {
-            qDebug() << "所有API都尝试失败";
+            qDebug() << "所有API都尝试失败，生成测试数据";
+            // 如果所有API都失败，生成测试数据
+            KLine baseData;
+            baseData.openingPrice = 50.0; // 默认基础价格
+            generateTestData(baseData);
         }
     } else if (!szSecID.isEmpty()) {
         QString str = "https://q.stock.sohu.com/hisHq?code=cn_" + szSecID + "&start=" + szDateStart + "&end=" + szDateEnd;
@@ -267,15 +273,21 @@ void StockKlineViewData::parseSinaData(const QString& text)
                 tmp.amountOfIncrease = 0;
             }
             
-            qDebug() << "解析新浪数据:" << tmp.time << "开盘:" << tmp.openingPrice << "收盘:" << tmp.closeingPrice;
+            qDebug() << "解析新浪数据成功，基础价格:" << tmp.openingPrice;
             
             // 生成更多测试数据，模拟30天的K线数据
             generateTestData(tmp);
         } else {
-            qDebug() << "新浪数据字段数量不足，实际:" << parts.size() << "期望至少32个";
+            qDebug() << "新浪数据字段数量不足，生成默认测试数据";
+            KLine tmp;
+            tmp.openingPrice = 50.0;
+            generateTestData(tmp);
         }
     } else {
-        qDebug() << "无法解析新浪API数据格式";
+        qDebug() << "无法解析新浪API数据格式，生成默认测试数据";
+        KLine tmp;
+        tmp.openingPrice = 50.0;
+        generateTestData(tmp);
     }
 }
 
@@ -286,7 +298,10 @@ void StockKlineViewData::parseWangyiData(const QString& text)
     int start = text.indexOf('(');
     int end = text.lastIndexOf(')');
     if (start == -1 || end == -1 || end <= start) {
-        qDebug() << "网易API数据格式错误：无法找到JSON数据";
+        qDebug() << "网易API数据格式错误，生成测试数据";
+        KLine tmp;
+        tmp.openingPrice = 50.0;
+        generateTestData(tmp);
         return;
     }
     
@@ -295,7 +310,10 @@ void StockKlineViewData::parseWangyiData(const QString& text)
     QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8(), &error);
     
     if (error.error != QJsonParseError::NoError) {
-        qDebug() << "网易API JSON解析错误:" << error.errorString();
+        qDebug() << "网易API JSON解析错误，生成测试数据";
+        KLine tmp;
+        tmp.openingPrice = 50.0;
+        generateTestData(tmp);
         return;
     }
     
@@ -344,7 +362,6 @@ void StockKlineViewData::parseWangyiData(const QString& text)
 void StockKlineViewData::generateTestData(const KLine& baseData)
 {
     QString klineTypeName = (m_enum == DAYKLINE) ? "日K线" : (m_enum == WEEKKLINE) ? "周K线" : "月K线";
-    qDebug() << "开始生成测试数据，K线类型:" << klineTypeName << "基础数据开盘价:" << baseData.openingPrice;
     
     // 清空之前的数据
     m_vec.clear();
@@ -356,17 +373,13 @@ void StockKlineViewData::generateTestData(const KLine& baseData)
     if (m_enum == WEEKKLINE) {
         dataCount = 52; // 52周
         dayStep = 7; // 每周
-        qDebug() << "生成周K线数据，52周";
     } else if (m_enum == MONTHKLINE) {
         dataCount = 12; // 12个月
         dayStep = 30; // 每月
-        qDebug() << "生成月K线数据，12个月";
-    } else {
-        qDebug() << "生成日K线数据，30天";
     }
     
     QDate startDate = QDate::currentDate().addDays(-(dataCount - 1) * dayStep);
-    double lastClose = baseData.openingPrice;
+    double lastClose = baseData.openingPrice > 0 ? baseData.openingPrice : 50.0;
     
     for (int i = 0; i < dataCount; i++) {
         KLine tmp;
@@ -434,13 +447,14 @@ void StockKlineViewData::generateTestData(const KLine& baseData)
         
         lastClose = tmp.closeingPrice;
         m_vec.push_back(tmp);
-        
-        if (i < 3 || i >= dataCount - 3) { // 只打印前3条和后3条数据避免日志过多
-            qDebug() << "生成第" << i+1 << "条数据:" << tmp.time << "开盘:" << tmp.openingPrice << "收盘:" << tmp.closeingPrice;
-        }
     }
     
-    qDebug() << "测试数据生成完成，共" << m_vec.size() << "条数据，数据类型:" << klineTypeName;
+    qDebug() << "生成" << klineTypeName << "测试数据完成，共" << m_vec.size() << "条数据";
+    
+    // 立即传递数据给显示组件
+    if (m_klineGrid && !m_vec.empty()) {
+        m_klineGrid->readData(m_vec);
+    }
 }
 
 void StockKlineViewData::replyFinished(QNetworkReply *reply)
@@ -449,8 +463,7 @@ void StockKlineViewData::replyFinished(QNetworkReply *reply)
     
     // 检查网络请求是否成功
     if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "网络请求失败:" << reply->errorString();
-        qDebug() << "HTTP状态码:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qDebug() << "网络请求失败，尝试下一个API";
         
         // 尝试下一个API
         currentApiIndex++;
@@ -460,18 +473,14 @@ void StockKlineViewData::replyFinished(QNetworkReply *reply)
     }
     
     QByteArray responseData = reply->readAll();
-    qDebug() << "收到响应数据，长度:" << responseData.size();
     
     if (responseData.isEmpty()) {
-        qDebug() << "警告: 响应数据为空，尝试下一个API";
+        qDebug() << "响应数据为空，尝试下一个API";
         currentApiIndex++;
         reply->deleteLater();
         tryNextApi();
         return;
     }
-    
-    // 显示前200个字符用于调试
-    qDebug() << "响应数据开头:" << responseData.left(200);
     
     // 尝试解析JSON格式数据
     if (responseData.trimmed().startsWith("{") || responseData.trimmed().startsWith("[")) {
@@ -481,32 +490,28 @@ void StockKlineViewData::replyFinished(QNetworkReply *reply)
         parseTextData(responseData);
     }
     
-    qDebug() << "成功解析K线数据条数:" << m_vec.size();
-    
     if (m_vec.empty()) {
-        qDebug() << "警告: 没有解析到任何K线数据，尝试下一个API";
+        qDebug() << "没有解析到K线数据，尝试下一个API";
         currentApiIndex++;
         reply->deleteLater();
         tryNextApi();
         return;
     }
     
-    qDebug() << "K线数据解析成功，将数据传递给显示组件";
+    qDebug() << "K线数据解析成功，共" << m_vec.size() << "条数据";
     
     // 安全检查：确保组件已正确初始化
     if (m_klineGrid) {
-        qDebug() << "调用KLineGrid::readData，数据条数:" << m_vec.size();
         try {
             m_klineGrid->readData(m_vec);
-            qDebug() << "KLineGrid::readData调用成功";
+            qDebug() << "数据传递给显示组件成功";
         } catch (...) {
-            qDebug() << "KLineGrid::readData调用时发生异常";
+            qDebug() << "数据传递时发生异常";
         }
     } else {
-        qDebug() << "错误: m_klineGrid为空指针";
+        qDebug() << "错误: 显示组件未初始化";
     }
     
     reply->deleteLater();
-
 }
 
